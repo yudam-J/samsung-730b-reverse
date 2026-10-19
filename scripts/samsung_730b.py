@@ -335,19 +335,23 @@ class Samsung730B:
         ff = sample.count(0xFF)
         uniq = len(set(sample))
 
-        self._log(
-            f"detect stats(ff-based): total={total}, zeros={zeros}, "
-            f"ff={ff}, uniq={uniq}"
-        )
-
-        # detect X: zeros 많고 ff비율 아주낮음
         zero_ratio = zeros / total
         ff_ratio = ff / total
 
-        # detect O: ff비율 80퍼 이상, zeros비율 1에 가깝지 않음
-        if ff_ratio > 0.3 and zeros < total * 0.95:
+        self._log(
+            f"detect stats: total={total}, zeros={zeros} ({zero_ratio:.2f}), "
+            f"ff={ff} ({ff_ratio:.2f}), uniq={uniq}"
+        )
+
+        # detect O (1): ff비율 30% 초과, zeros비율 95% 미만 (지문의 선이 흰색인 0xFF로 나타나는 센서)
+        if ff_ratio > 0.3 and zero_ratio < 0.95:
             return True
 
+        # detect O (2): 지문의 선이 흰색 0xFF로 나타나지 않는 센서
+        if zero_ratio < 0.60:
+            return True
+
+        # detect X: zeros 많고 ff비율 아주 낮음 (손가락 없음, idle)
         return False
 
     # ---------- 캡처 ----------

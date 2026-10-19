@@ -556,7 +556,15 @@ static int has_fingerprint_in_detect(const unsigned char *data, int len) {
 
     if (ff_ratio > 0.30 && zeros < total * 0.95) {
         fprintf(stderr,
-                "[+] detect figner stats: total=%d, zeros=%d (%.2f), ff=%d (%.2f)\n",
+                "[+] detect finger (ff): total=%d, zeros=%d (%.2f), ff=%d (%.2f)\n",
+                total, zeros, zero_ratio, ff, ff_ratio);
+        return 1;
+    }
+
+    /* 지문의 선이 흰색인 0xFF로 나타나지 않는 센서 (idle ~97% zeros -> touch ~11% zeros) */
+    if (zeros < total * 0.60) {
+        fprintf(stderr,
+                "[+] detect finger (zeros): total=%d, zeros=%d (%.2f), ff=%d (%.2f)\n",
                 total, zeros, zero_ratio, ff, ff_ratio);
         return 1;
     }
