@@ -324,7 +324,15 @@ class Samsung730B:
         return bytes(image_data)
 
     def _has_fingerprint_in_detect(self, data: bytes) -> bool:
-        """ff 비율 기반"""
+        """짧은 캡처 버퍼에 손가락이 있는지.
+
+        sample/*.raw 앞 1280바이트(6패킷 probe) 실측:
+          none    (무접촉) zero ~0.97, 0xFF ~0.00
+          half    (부분접촉) zero ~0.69, 0xFF ~0.14
+          default (정상)    zero ~0.13, 0xFF ~0.52
+        예전 조건(0xFF > 30% 또는 zero < 60%)은 half를 놓쳐서,
+        손가락을 올려도 캡처가 시작되지 않았다.
+        """
         if not data or len(data) < 512:
             self._log("detect: data too short for finger detect")
             return False
@@ -343,15 +351,16 @@ class Samsung730B:
             f"ff={ff} ({ff_ratio:.2f}), uniq={uniq}"
         )
 
-        # detect O (1): ff비율 30% 초과, zeros비율 95% 미만 (지문의 선이 흰색인 0xFF로 나타나는 센서)
-        if ff_ratio > 0.3 and zero_ratio < 0.95:
+        # 흰 융선(0xFF) 센서. 부분 접촉은 0xFF가 30%에 못 미친다 (half ~14%).
+        # 무접촉(none)은 0xFF가 0.5% 미만이라 5%로 구분된다.
+        if ff_ratio >= 0.05 and zero_ratio < 0.95:
             return True
 
-        # detect O (2): 지문의 선이 흰색 0xFF로 나타나지 않는 센서
-        if zero_ratio < 0.60:
+        # 융선이 0xFF로 포화되지 않는 센서.
+        # idle ~97% zeros, 부분 접촉 ~69%. 60%는 half를 놓치고 85%는 none(91%+)을 거른다.
+        if zero_ratio < 0.85:
             return True
 
-        # detect X: zeros 많고 ff비율 아주 낮음 (손가락 없음, idle)
         return False
 
     # ---------- 캡처 ----------

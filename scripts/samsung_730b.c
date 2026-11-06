@@ -554,15 +554,23 @@ static int has_fingerprint_in_detect(const unsigned char *data, int len) {
     double zero_ratio = (double)zeros / (double)total;
     double ff_ratio = (double)ff / (double)total;
 
-    if (ff_ratio > 0.30 && zeros < total * 0.95) {
+    /* 6-packet probe (~1280 bytes) measured on the checked-in captures:
+     *   none    zero ~0.97, ff ~0.00  (no contact)
+     *   half    zero ~0.69, ff ~0.14  (partial contact; recognition starts here)
+     *   default zero ~0.13, ff ~0.52
+     * The old ff>0.30 / zero<0.60 test missed half, so a real press never
+     * opened a capture. 5% 0xFF sits between none (<0.5%) and half (>=8%).
+     * 85% zeros sits between half (<=75%) and none (>=91%).
+     */
+    if (ff_ratio >= 0.05 && zeros < total * 0.95) {
         fprintf(stderr,
                 "[+] detect finger (ff): total=%d, zeros=%d (%.2f), ff=%d (%.2f)\n",
                 total, zeros, zero_ratio, ff, ff_ratio);
         return 1;
     }
 
-    /* 지문의 선이 흰색인 0xFF로 나타나지 않는 센서 (idle ~97% zeros -> touch ~11% zeros) */
-    if (zeros < total * 0.60) {
+    /* 융선이 0xFF로 포화되지 않는 센서. idle ~97% zeros, 부분 접촉은 그보다 낮다. */
+    if (zeros < total * 0.85) {
         fprintf(stderr,
                 "[+] detect finger (zeros): total=%d, zeros=%d (%.2f), ff=%d (%.2f)\n",
                 total, zeros, zero_ratio, ff, ff_ratio);
